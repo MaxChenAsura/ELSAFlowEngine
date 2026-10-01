@@ -11,7 +11,7 @@
     <PackageReference Include="Elsa.Persistence.EFCore" Version="3.8.0" />
     <PackageReference Include="Elsa.Persistence.EFCore.SqlServer" Version="3.8.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.31" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="8.1.4" />
   </ItemGroup>
 
 </Project>
