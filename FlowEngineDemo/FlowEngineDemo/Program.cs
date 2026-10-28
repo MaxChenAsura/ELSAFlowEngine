@@ -1,4 +1,5 @@
 using FlowEngineDemo.Extensions;
+using FlowEngineDemo.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +14,10 @@ builder.Services.AddFlowEngineDatabase(
 
 builder.Services.AddElsaFlowEngine(
     builder.Configuration);
+
+builder.Services.AddScoped<IFlowDefinitionService, FlowDefinitionService>();
+
+builder.Services.AddScoped<IFlowStepService, FlowStepService>();
 
 var app = builder.Build();
 
