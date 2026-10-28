@@ -2,18 +2,12 @@ namespace FlowEngineDemo.Models;
 
 public class ApproveApprovalRequest
 {
-    /// <summary>
-    /// Elsa Workflow Instance ID
-    /// </summary>
-    public string FlowInstanceId { get; set; } = string.Empty;
-   
-    /// <summary>
-    /// 簽核人工號
-    /// </summary>
+      // Flow Engine Task ID
+    public long TaskId { get; set; }
+
+    // 簽核人員
     public string ApproverId { get; set; } = string.Empty;
 
-    /// <summary>
-    /// 簽核意見
-    /// </summary>
+    // 簽核意見
     public string? Comment { get; set; }
 }

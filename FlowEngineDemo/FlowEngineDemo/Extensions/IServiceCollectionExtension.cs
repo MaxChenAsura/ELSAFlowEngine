@@ -32,7 +32,11 @@ public static class IServiceCollectionExtension
 
             .AddScoped<
                 IApprovalHistoryService,
-                ApprovalHistoryService>();
+                ApprovalHistoryService>()
+                
+            .AddScoped<
+                IApprovalTaskService,
+                ApprovalTaskService>();
 
             // DAO
             // 後續建立 DAO 後統一放在這裡

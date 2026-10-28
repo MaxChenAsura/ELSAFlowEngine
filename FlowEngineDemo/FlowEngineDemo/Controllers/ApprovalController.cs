@@ -4,7 +4,9 @@ using Elsa.Workflows.Runtime;
 using Elsa.Workflows.Runtime.Messages;
 using Microsoft.AspNetCore.Mvc;
 using FlowEngineDemo.Services;
-
+using Elsa.Workflows.Runtime.Bookmarks;
+using Elsa.Workflows.Runtime.Filters;
+using FlowEngineDemo.Models.Requests;
 namespace FlowEngineDemo.Controllers;
 
 [ApiController]
@@ -14,15 +16,20 @@ public class ApprovalController : ControllerBase
     private readonly IWorkflowRuntime _workflowRuntime;
     private readonly IApprovalWorkflowService _approvalWorkflowService;
     private readonly IApprovalHistoryService _approvalHistoryService;
-
+    private readonly IApprovalTaskService _approvalTaskService;
+private readonly IBookmarkStore _bookmarkStore;
     public ApprovalController(
         IWorkflowRuntime workflowRuntime,
         IApprovalWorkflowService approvalWorkflowService,
-        IApprovalHistoryService approvalHistoryService)
+        IApprovalHistoryService approvalHistoryService,
+        IApprovalTaskService approvalTaskService,
+        IBookmarkStore bookmarkStore)
     {
         _workflowRuntime = workflowRuntime;
         _approvalWorkflowService = approvalWorkflowService;
         _approvalHistoryService = approvalHistoryService;
+        _approvalTaskService = approvalTaskService;
+        _bookmarkStore = bookmarkStore;
     }
     [HttpPost("submit")]
     public async Task<ActionResult<SubmitApprovalResponse>> Submit(
@@ -57,13 +64,30 @@ public class ApprovalController : ControllerBase
                 ["FormId"] = request.FormId,
                 ["ApplicantId"] = request.ApplicantId,
                 ["FlowCode"] = request.FlowCode,
-                ["Subject"] = request.Subject ?? string.Empty
+                ["Subject"] = request.Subject ?? string.Empty,
+                ["ApprovalMode"] = request.ApprovalMode,
+                ["ApproverIds"] = request.ApproverIds
             }
         });
 
     // 真正執行 Workflow
     await client.RunInstanceAsync();
+    var bookmarks = await _bookmarkStore.FindManyAsync(
+        new BookmarkFilter
+        {
+            WorkflowInstanceId = client.WorkflowInstanceId
+        });
 
+    var bookmark = bookmarks.FirstOrDefault(x =>
+        x.Payload?.ToString() == "APPROVAL");
+
+    if (bookmark == null &&
+        request.FlowCode == "PURCHASE_APPROVAL")
+    {
+        throw new InvalidOperationException(
+            $"找不到等待簽核的 Bookmark。" +
+            $"FlowInstanceId={client.WorkflowInstanceId}");
+    }
     var response = new SubmitApprovalResponse
     {
         // Elsa 真正的 Workflow Instance ID
@@ -83,8 +107,29 @@ public class ApprovalController : ControllerBase
             Comment = request.Subject,
             ActionAt = DateTimeOffset.UtcNow
         });
+        if (request.FlowCode == "PURCHASE_APPROVAL")
+        {
+        await _approvalTaskService.AddAsync(
+            new ApprovalTask
+            {
+                FlowInstanceId = client.WorkflowInstanceId,
+                FormType = request.FormType,
+                BookmarkId = bookmark!.Id,
+                FormId = request.FormId,
+
+                StepCode = "MANAGER_APPROVAL",
+                StepName = "主管簽核",
+
+                ApprovalMode = request.ApprovalMode,
+                ApproverId = request.ApproverIds,
+
+                Status = "PENDING",
+                CreatedAt = DateTimeOffset.UtcNow
+            });
+        }
         return Ok(response);
     }
+    
    [HttpPost("approve")]
     public async Task<IActionResult> Approve(
         [FromBody] ApproveApprovalRequest request)
@@ -93,13 +138,13 @@ public class ApprovalController : ControllerBase
 
         // 從指定 Bookmark 恢復 Workflow
          await _approvalWorkflowService.ApproveAsync(
-        request.FlowInstanceId,
+        request.TaskId,
         request.ApproverId,
         request.Comment);
 
         return Ok(new
             {
-                request.FlowInstanceId,
+                request.TaskId,
                 Decision = "APPROVE",
                 request.ApproverId,
                 request.Comment
@@ -110,15 +155,32 @@ public class ApprovalController : ControllerBase
         [FromBody] RejectApprovalRequest request)
     {
         await _approvalWorkflowService.RejectAsync(
-            request.FlowInstanceId,
+            request.TaskId,
             request.ApproverId,
             request.Comment);
 
         return Ok(new
         {
-            request.FlowInstanceId,
+            request.TaskId,
             Decision = "REJECT",
             request.ApproverId,
+            request.Comment
+        });
+    }
+    [HttpPost("resubmit")]
+    public async Task<IActionResult> Resubmit(
+    [FromBody] ResubmitApprovalRequest request)
+    {
+        await _approvalWorkflowService.ResubmitAsync(
+            request.TaskId,
+            request.ApplicantId,
+            request.Comment);
+
+        return Ok(new
+        {
+            request.TaskId,
+            Action = "RESUBMIT",
+            request.ApplicantId,
             request.Comment
         });
     }

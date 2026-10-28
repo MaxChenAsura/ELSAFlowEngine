@@ -26,4 +26,14 @@ public class SubmitApprovalRequest
     /// 表單標題
     /// </summary>
     public string? Subject { get; set; }
+
+    /// <summary>
+    /// 簽核模式：SINGLE / COUNTERSIGN / PARALLEL
+    /// </summary>
+    public string ApprovalMode { get; set; } = "SINGLE";
+
+    /// <summary>
+    /// 簽核人員，多人時以逗號分隔
+    /// </summary>
+    public string ApproverIds { get; set; } = string.Empty;
 }
