@@ -18,7 +18,8 @@ builder.Services.AddElsaFlowEngine(
 builder.Services.AddScoped<IFlowDefinitionService, FlowDefinitionService>();
 
 builder.Services.AddScoped<IFlowStepService, FlowStepService>();
-
+builder.Services.AddScoped<IParameterService, ParameterService>();
+builder.Services.AddScoped<IRoutingService, RoutingService>();
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
